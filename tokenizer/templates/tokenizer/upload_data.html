@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+{% load static %}
+{% load custom_tags %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Keyword selector</title>
+    <link rel="stylesheet" href="//unpkg.com/bootstrap@4/dist/css/bootstrap.min.css">
+    <script src='//unpkg.com/jquery@3/dist/jquery.min.js'></script>
+    <script src='//unpkg.com/popper.js@1/dist/umd/popper.min.js'></script>
+    <script src='//unpkg.com/bootstrap@4/dist/js/bootstrap.min.js'></script>
+    <link rel="Stylesheet" href="{% static 'tokenizer/main.css' %}">
+
+<style type="text/css">
+
+.checkbox-invisible {
+    display: none;
+}
+
+.checkbox-pointer {
+    cursor: pointer;
+    font-size: 15px;
+}
+.checkbox-box:checked + .checkbox-text {
+   font-weight: bold;
+}
+
+.pagination {
+    display: -ms-flexbox;
+    flex-wrap: wrap;
+    display: flex;
+    padding-left: 0;
+    list-style: none;
+    border-radius: 0.25rem;
+}
+
+</style>
+
+<script>
+
+// 현재 url을 저장한다
+var url = window.location.href.split("/")
+var base_url = url[0] + "//" + url[2] + "/" + url[3] + "/"
+
+
+</script>
+
+
+</head>
+<body>
+<h2>Keyword selector</h2>
+
+<div class="m-5">
+
+{% if messages %}
+    {% for message in messages %}
+        <div>
+            <!-- | means OR operator-->
+            <strong>message : {{message|safe}}</strong>
+        </div>
+    {% endfor %}
+{% else %}
+
+<!-- CSV file upload -->
+<form action="{% url 'upload_data' %}" method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <label for="file1"> Upload a file</label>
+    <input type="file" id="file1" name="file">
+    <small>Only accepts CSV files</small>
+    <button type="submit" class="btn btn-primary" name="submit_upload">Upload</button>
+<!-- Key 입력창 -->
+    <div class="form-row">
+        <div class="form-group col-md-4">
+            {% if key == "" %}
+                <input class="form-control" type="text" id="input_key" name="input_key" placeholder="Enter The Key">
+            {% else %}
+                <input class="form-control" type="text" id="input_key" name="input_key" value="{{key}}">
+            {% endif %}
+        </div>
+        <div class="form-group row-md-4">
+            <!-- query data by key -->
+            <button type="submit" class="btn btn-primary" id="submit_key" name="submit_key">Query</button>
+            <!-- query all data -->
+            <button type="submit" class="btn btn-primary" id="submit_all" name="submit_all">Query All</button>
+            <!-- delete data by data -->
+            <button type="submit" class="btn btn-primary" name="submit_delete">Delete Current Key</button>
+            <!-- delete all data -->
+            <button type="submit" class="btn btn-primary" name="submit_delete_all">Delete All</button>
+        </div>
+    </div>
+</form>
+
+{% endif %}
+
+<table class="table">
+    <tr><th>#</th><th>key</th><th>count</th></tr>
+    {% if data == "" %}
+        {% if data_count != "" %}
+            display current key, count<br>
+            <tr><td>1</td><td>{{key}}</td><td>{{data_count}}</td></tr>
+        {% endif %}
+    {% else %}
+        display all key, count<br>
+        {% for d in data %}
+            <tr><td>{{ forloop.counter }}</td><td>{{d.key}}</td><td>{{d.cnt}}</td></tr>
+        {% endfor %}
+    {% endif %}
+</table>
+
+</body>
+</html>

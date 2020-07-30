@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+{% load static %}
+{% load custom_tags %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Keyword selector</title>
+    <link rel="stylesheet" href="//unpkg.com/bootstrap@4/dist/css/bootstrap.min.css">
+    <script src='//unpkg.com/jquery@3/dist/jquery.min.js'></script>
+    <script src='//unpkg.com/popper.js@1/dist/umd/popper.min.js'></script>
+    <script src='//unpkg.com/bootstrap@4/dist/js/bootstrap.min.js'></script>
+    <!-- <link rel="Stylesheet" href="{% static 'tokenizer/main.css' %}"> -->
+
+
+
+
+<style>
+
+</style>
+<script>
+
+
+// 페이지가 로드될 때 실행한다
+function onLoadBody(){
+    // sessionStorage에 user_id를 저장한다
+    sessionStorage.setItem('user_id', "{{ data.user_id }}")
+    sessionStorage.setItem('user_key', "{{ data.user_key }}")
+};
+
+
+$(document).ready(function() {
+    $('.btn.btn-outline-info').click(function(e){
+        e.preventDefault();
+        if($(this).hasClass('active')){
+            $(this).removeClass('active')
+        } else {
+            $(this).addClass('active')
+        }
+
+        var selected_keywords = ""
+        var selected_keywords_order = ""
+        $(".active[name=" + this.name + "]").each(function(){
+            selected_keywords = selected_keywords + $(this).val() + " ";
+            selected_keywords_order = selected_keywords_order + this.id.replace(/[^\d]/g, '') + " ";
+        })
+        selected_keywords = selected_keywords.trim()
+        selected_keywords_order = selected_keywords_order.trim()
+        console.log('selected_keywords : ' + selected_keywords)
+        console.log('selected_keywords_order : ' + selected_keywords_order)
+
+
+        var cell = document.getElementById("selected_" + this.name);
+        while ( cell.hasChildNodes() ) { cell.removeChild( cell.firstChild ); }
+
+        selected_keywords_split = selected_keywords.split(" ")
+        console.log(selected_keywords_split)
+        for (i=0; i<selected_keywords_split.length; i++) {
+            var button = document.createElement("input");
+            button.type = "button";
+            button.value = selected_keywords_split[i];
+            button.className = "btn btn-outline-primary"
+            cell.appendChild(button);
+        }
+
+        $.ajax({
+            type: "GET",
+            url: "/keyword_selector/update",
+            data: {user_id: sessionStorage.getItem('user_id'),
+                   user_key: sessionStorage.getItem('user_key'),
+                   type: this.name,
+                   selected_keywords: selected_keywords,
+                   selected_keywords_order : selected_keywords_order
+            }
+        });
+
+    });
+
+});
+
+function onClickNext(){
+    console.log('onClickNext')
+    document.getElementById("next_type").value = "next";
+    $('#form_user_id').submit();
+};
+function onClickPrevious(){
+    console.log('onClickPrevious')
+    document.getElementById("next_type").value = "previous";
+    $('#form_user_id').submit();
+};
+
+</script>
+
+</head>
+
+<body onload="onLoadBody()">
+
+<h2>Keyword selector</h2>
+
+<div class="container">
+{{ data.user_key }}
+<!-- user_id 입력창 -->
+<form id="form_user_id" method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-row">
+        <div class="form-group col-md-2">
+            {% if user_id == "" %}
+                <input class="form-control" type="text" id="input_user_id" name="input_user_id" placeholder="Enter The User Id">
+            {%  else %}
+                <input class="form-control" type="text" id="input_user_id" name="input_user_id" value="{{ user_id }}">
+            {% endif %}
+        </div>
+        <div class="form-group col-md-1">
+            <button type="submit" class="btn btn-primary" id="submit_user_id" name="submit_user_id">Enter</button>
+        </div>
+    </div>
+    <input type="hidden" id="next_type" name="next_type" value="">
+    <input type="hidden" id="rand_order" name="rand_order" value="{{ data.rand_order }}">
+</form>
+
+</div>
+
+<div class="container">
+  <div class="row">
+    <div class="col">
+        <div class="row">
+            <div class="card bg-light mb-3" style="max-width: 18rem;">
+              <div class="card-header">Positive Text</div>
+              <div class="card-body">
+                <p class="card-text">
+                    {{ data.pos_text }}
+                </p>
+              </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="card bg-light mb-3" style="max-width: 18rem;">
+              <div class="card-header">Positive Text Normalized</div>
+              <div class="card-body">
+                <p class="card-text">
+                    {% for word in data.pos_text_norm_split %}
+                        {% if forloop.counter in data.pos_word_num_split %}
+                            <button type="button" class="btn btn-outline-info active" id="pos_{{ forloop.counter }}" name="positive_words" value="{{ word }}">{{ word }}</button>
+                        {% else %}
+                            <button type="button" class="btn btn-outline-info" id="pos_{{ forloop.counter }}" name="positive_words" value="{{ word }}">{{ word }}</button>
+                        {% endif %}
+                    {% endfor %}
+
+                </p>
+              </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="card bg-light mb-3" style="max-width: 18rem;">
+          <div class="card-header">Selected Positive Words</div>
+          <div class="card-body">
+            <div id="selected_positive_words">
+                {% for word in data.pos_keyword_split %}
+                    <button type="button" class="btn btn-outline-primary" value="{{ word }}">{{ word }}</button>
+                {% endfor %}
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+        <div class="row">
+            <div class="card bg-light mb-3" style="max-width: 18rem;">
+              <div class="card-header">Negative Text</div>
+              <div class="card-body">
+                <p class="card-text">
+                    {{ data.neg_text }}
+                </p>
+              </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="card bg-light mb-3" style="max-width: 18rem;">
+              <div class="card-header">Negative Text Normalized</div>
+              <div class="card-body">
+                <p class="card-text">
+                    {% for word in data.neg_text_norm_split %}
+                        {% if forloop.counter in data.neg_word_num_split %}
+                            <button type="button" class="btn btn-outline-info active" id="pos_{{ forloop.counter }}" name="negative_words" value="{{ word }}">{{ word }}</button>
+                        {% else %}
+                            <button type="button" class="btn btn-outline-info" id="pos_{{ forloop.counter }}" name="negative_words" value="{{ word }}">{{ word }}</button>
+                        {% endif %}
+                    {% endfor %}
+                </p>
+              </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="card bg-light mb-3" style="max-width: 18rem;">
+          <div class="card-header">Selected Negative Words</div>
+          <div class="card-body">
+            <div id="selected_negative_words">
+                {% for word in data.neg_keyword_split %}
+                    <button type="button" class="btn btn-outline-primary" value="{{ word }}">{{ word }}</button>
+                {% endfor %}
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+</div>
+
+
+<nav aria-label="Page navigation example">
+  <ul class="pagination">
+    <li class="page-item"><a class="page-link" href="#" onclick=onClickPrevious()>Previous</a></li>
+    <li class="page-item"><a class="page-link" href="#">View All</a></li>
+    <li class="page-item"><a class="page-link" href="#" onclick=onClickNext()>Next</a></li>
+  </ul>
+</nav>
+
+
+</body>
+</html>

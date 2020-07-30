@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>제이쿼리</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+<style>
+.button {
+    float:left;
+    color: #333;
+    width: auto;
+    text-align: center;
+    padding: 0 10px;
+    background: #f0f0f0;
+    line-height: 1.5em;
+    height: auto;
+}
+.button.active {
+    background: #ea0000;
+    color: #fff;
+}
+</style>
+<script type="text/javascript">
+$(document).ready(function() {
+    $('.button').click(function() {
+      if ($(this).hasClass('active')) {
+        $(this).removeClass('active')
+      } else {
+        $(this).addClass('active')
+      }
+    });
+});
+</script>
+</head>
+<body>
+
+<div class="button ">My button</div>
+</body>
+</html>

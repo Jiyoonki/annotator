@@ -1,0 +1,221 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'tokenizer/main.css' %}">
+    <title>Keyword selector</title>
+    <script src="//code.jquery.com/jquery-3.3.1.min.js"></script>
+
+    <script>
+$(function() {
+    $("#home-content").keypress(function (e) {
+        if(e.which == 13) {
+            //submit form via ajax, this is not JS but server side scripting so not showing here
+            $('#form-keywords').submit();
+            e.preventDefault();
+        }
+    });
+});
+    </script>
+
+
+<script>
+
+    output_content_array = new Array();
+    output_content_index = new Array();
+
+</script>
+
+
+
+
+
+</head>
+<body>
+			<h2>Keyword selector</h2>
+		<hr />
+		<form name="main" method="post" id="form-keywords">{% csrf_token %}
+			<div class="form-group">
+				<label for="home-content">Input text</label><br><br>
+                <textarea id="home-content" class="form-control" rows="5" name="content" placeholder="enter text">{{ content }}</textarea>
+
+			</div>
+        </form>
+        		<hr />
+            <form name="second">
+        {% if content %}
+			<div class="form-group">
+            <label>Normalized text</label>
+
+                        {% for word in output_text1 %}
+
+                        <button type="button" class="btn" value="{{ word }}" id="{{ word }}" onclick="myFunction({{ word }})"hidden></button>
+
+                        {% endfor %}
+
+                        <br>
+            <div class="clearfix">
+                        {% for key, value in output_text_dict.items %}
+                        <button type="button" name="keywordbutton" class="btn btn-default pull-right" value="{{ value }}" id="{{ key }}" onclick="selectKeyword({{ key }}, {{ value }})">{{ value }}</button>
+                        {% endfor %}
+            </div>
+            {% endif %}<br><br>
+        		<hr />
+                <label for="output-content">Selected keywords</label><br><br>
+				<textarea id="output-content" class="form-control" rows="5" name="output_text" placeholder=""></textarea>
+
+                <textarea id="output-content-index" class="form-control" rows="5" name="output_text" placeholder=""hidden/></textarea>
+
+			</div>
+		</form>
+
+<table id="tblEntAttributes">
+<tbody style="display:none">
+<tr><td>Raw text</td><td>Keywords</td></tr>
+</tbody>
+</table>
+
+<button class="large button" id="test">Submit</button>
+<button class="large green button" id="csvlink">CSV file</button>
+
+<script>
+
+function selectKeyword(key, value) {
+
+    var p = document.getElementById(key).value;
+    var index = key;
+
+
+    output_content_array.push(p);
+    output_content_index.push(index);
+
+    // 중복제거
+    var uniqueArray = [];
+    var uniqueIndex = [];
+    $.each(output_content_index, function(i, el){
+        if($.inArray(el, uniqueIndex) === -1) {
+            uniqueIndex.push(el);
+            uniqueArray.push(output_content_array[i]);
+        }
+
+    });
+    output_content_index = uniqueIndex;
+    output_content_array = uniqueArray;
+
+
+    //sort array
+    //1) combine the arrays:
+    var list = [];
+    for (var j = 0; j < output_content_array.length; j++)
+        list.push({'val': output_content_array[j], 'key': output_content_index[j]});
+    //2) sort:
+    list.sort(function(a, b) {
+        return ((a.key < b.key) ? -1 : ((a.key == b.key) ? 0 : 1));
+        //Sort could be modified to, for example, sort on the age
+        // if the name is the same.
+    });
+    //3) separate them back out:
+    for (var k = 0; k < list.length; k++) {
+        output_content_array[k] = list[k].val;
+        output_content_index[k] = list[k].key;
+    }
+
+
+    document.getElementById("output-content-index").innerHTML = output_content_index;
+    document.getElementById("output-content").innerHTML = output_content_array.join(" ");
+}
+
+$('#test').click(function () {
+    var output_content = document.getElementById("output-content").value;
+    var content = document.getElementById("home-content").value;
+    var content_index = sessionStorage.getItem('content-index');
+    if (!content_index) {
+        content_index = -1;
+    }
+
+    content_index = Number(content_index) + 1;
+    sessionStorage.setItem('content-index', content_index);
+    var content_array = sessionStorage.getItem('content-array');
+    if (!content_array) {
+        content_array = [];
+    } else {
+        content_array = sessionStorage.getItem('content-array').split(",");
+    }
+    content_array[content_index] = content;
+    var output_array = sessionStorage.getItem('output-array');
+    if (!output_array){
+        output_array = [];
+    }else{
+        output_array = sessionStorage.getItem('output-array').split(",");
+    }
+
+    output_array[content_index] = output_content;
+    for (let i = 0; i < content_array.length; i++) {
+        var newRowContent = "<tr><td>" + content_array[i] + "</td><td>" + output_array[i] +"</td></tr>";
+        $(newRowContent).appendTo($("#tblEntAttributes"));
+    }
+
+        sessionStorage.setItem('content-array', content_array.join(","));
+        sessionStorage.setItem('output-array', output_array.join(","));
+
+        document.getElementById('output-content').value = '' ;
+        document.getElementById('home-content').value = '';
+
+        var element = document.getElementsByName('keywordbutton'), index;
+
+        for (index = element.length - 1; index >= 0; index--) {
+            element[index].parentNode.removeChild(element[index]);
+}
+});
+
+    function download_csv(csv, filename) {
+        var csvFile;
+        var downloadLink;
+
+        // CSV FILE
+        csvFile = new Blob(["\ufeff"+csv], {type: "text/csv;charset=utf-8;"});
+
+        // Download link
+        downloadLink = document.createElement("a");
+
+        // File name
+        downloadLink.download = filename;
+
+        // We have to create a link to the file
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+
+        // Make sure that the link is not displayed
+        downloadLink.style.display = "none";
+
+        // Add the link to your DOM
+        document.body.appendChild(downloadLink);
+
+        // Lanzamos
+        downloadLink.click();
+    }
+
+    function export_table_to_csv(html, filename) {
+        var csv = [];
+        var rows = document.querySelectorAll("table tr");
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = [], cols = rows[i].querySelectorAll("td, th");
+
+            for (var j = 0; j < cols.length; j++)
+                row.push(cols[j].innerText);
+
+            csv.push(row.join(","));
+        }
+
+        // Download CSV
+        download_csv(csv.join("\n"), filename);
+    }
+    document.querySelector("#csvlink").addEventListener("click", function () {
+        var html = document.querySelector("table").outerHTML;
+        export_table_to_csv(html, "keywords.csv");
+    });
+</script>
+</body>
+</html>

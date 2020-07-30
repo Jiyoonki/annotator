@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+{% load static %}
+{% load custom_tags %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Keyword selector</title>
+    <link rel="stylesheet" href="//unpkg.com/bootstrap@4/dist/css/bootstrap.min.css">
+    <script src='//unpkg.com/jquery@3/dist/jquery.min.js'></script>
+    <script src='//unpkg.com/popper.js@1/dist/umd/popper.min.js'></script>
+    <script src='//unpkg.com/bootstrap@4/dist/js/bootstrap.min.js'></script>
+    <link rel="Stylesheet" href="{% static 'tokenizer/main.css' %}">
+
+<style type="text/css">
+
+.checkbox-invisible {
+    display: none;
+}
+
+.checkbox-pointer {
+    cursor: pointer;
+    font-size: 15px;
+}
+.checkbox-box:checked + .checkbox-text {
+   font-weight: bold;
+}
+
+.pagination {
+    display: -ms-flexbox;
+    flex-wrap: wrap;
+    display: flex;
+    padding-left: 0;
+    list-style: none;
+    border-radius: 0.25rem;
+}
+
+</style>
+
+<script>
+
+// 현재 url을 저장한다
+var url = window.location.href.split("/")
+var base_url = url[0] + "//" + url[2] + "/" + url[3] + "/"
+
+// 페이지가 로드될 때 실행한다
+function onLoadBody(){
+    // sessionStorage에 session_id를 저장한다
+    sessionStorage.setItem('session_id', "{{session_id}}")
+}
+
+// 체크박스가 클릭될 때 마다 실행
+function onClickCheckbox(box) {
+
+    // 현재 체크된 체크박스와 name이 일치하는 모든 체크박스에서 체크된 word를 가져온다
+    // checked_keywords 변수에는 최종적으로 다음과 같은 형태의 값이 입력된다. "중요 키워드 단어 선택"
+    var checked_keywords = ""
+    $("input:checkbox[name=" + box.name + "]:checked").each(function(){
+        checked_keywords = checked_keywords + " " + $(this).val();
+    })
+    // 현재 체크된 체크박스와 name이 일치하는 모든 체크박스에서 체크되었다면 1, 체크되지 않았다면 0을 가져온다
+    // is_checked 변수에는 최종적으로 다음과 같은 형태의 값이 입력된다. "1 0 0 1"
+    var is_checked = ""
+    $("input:checkbox[name=" + box.name + "]").each(function(){
+        is_checked = is_checked + " " + ($(this).is(":checked") ? "1" : "0")
+    })
+    is_checked = is_checked.trim();
+
+    // 표의 keywords 열을 체크된 단어로 변경한다
+    document.getElementById(box.name + ".keywords").innerHTML = checked_keywords;
+
+    // 데이터베이스를 업데이트 하기 위해 ajax method를 사용한다
+    // 아래 조건과 일치하는 데이터베이스 Keywords 테이블의 keywords, words_checked 필드를 업데이트 한다
+    // Keywords.session_id = session_id, Keyword.session_index = box.name
+    $.ajax({
+        type: "GET",
+        url: "/v1_ajaxUpdate",
+        data: {session_id: sessionStorage.getItem('session_id'),
+               session_index: box.name,
+               words_selected: is_checked,
+               keywords: checked_keywords
+        }
+    });
+
+}
+
+
+
+</script>
+
+
+</head>
+<body onload="onLoadBody()">
+<h2>Keyword selector</h2>
+
+<div class="m-5">
+
+{% if messages %}
+    {% for message in messages %}
+        <div>
+            <!-- | means OR operator-->
+            <strong>message : {{message|safe}}</strong>
+        </div>
+    {% endfor %}
+{% else %}
+
+<!-- CSV file upload -->
+<form action="{% url 'v1_select_keywords' 1 %}" method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <label for="file1"> Upload a file</label>
+    <input type="file" id="file1" name="file">
+    <small>Only accepts CSV files</small>
+    <button type="submit" class="btn btn-primary" name="submit_upload">Upload</button>
+    <!-- delete all data in current session -->
+    <button type="submit" class="btn btn-primary" name="submit_clear">Clear All</button>
+</form>
+{% endif %}
+
+session_id : {{session_id}}
+
+
+
+<div class="mx-5">
+
+    <!-- 페이지 당 표시할 데이터 수를 선택하는 dropdown button을 만든다 -->
+    <div class="dropdown float-right">
+        <button class="btn-sm btn-warning dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            {{data_per_page}}
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+        <!-- dropdown 메뉴가 선택될 때 마다 url에 data 파라미터를 추가하여 페이지를 다시 불러온다 -->
+        <a class="dropdown-item" href="" onclick="location.href=base_url+'1?data=10';return false;">10</a>
+        <a class="dropdown-item" href="" onclick="location.href=base_url+'1?data=20';return false;">20</a>
+        <a class="dropdown-item" href="" onclick="location.href=base_url+'1?data=50';return false;">50</a>
+        <a class="dropdown-item" href="" onclick="location.href=base_url+'1?data=100';return false;">100</a>
+        </div>
+    </div>
+
+    <table class="table table-bordered table-sm">
+        <thead class="thead-dark">
+        <tr><th>Index</th><th>Text</th><th>Words</th><th>Keywords</th></tr>
+        <!-- 데이터베이스에서 추출된 데이터를 for loop를 통해 테이블로 만든다 -->
+        {% for row in data %}
+        <tr>
+            <td>{{row.session_index}}</td>
+            <td>{{row.text}}</td>
+            <td>
+                <div>
+                    <!-- 각 단어마다 체크박스를 만든다 -->
+                    <!-- orderDict custom tag의 input과 output은 다음과 같다 -->
+                    <!-- input:"중요 키워드 단어 선택"; output:{1:"중요", 2:"키워드", 3:"단어", 4:"선택"} -->
+                    {% with row.words|orderDict:" " as words%}
+                        {% for index, word in words.items %}
+                            <input type="checkbox" class="checkbox-invisible checkbox-box" id="{{row.session_index}}.{{index}}" name="{{row.session_index}}"
+                                   value="{{word}}" onclick="onClickCheckbox(this)">
+                                <label class="checkbox-pointer checkbox-text" for="{{row.session_index}}.{{index}}">{{word}}</label>
+                        {% endfor %}
+                    {% endwith %}
+                    <!-- 해당 단어가 이전에 체크되었다면 체크박스를 checked 상태로 변경한다 -->
+                    <!-- orderDict custom tag의 input과 output은 다음과 같다 -->
+                    <!-- input:"1 0 0 1"; output:{1:"1", 2:"0", 3:"0", 4:"1"} -->
+                    {% with row.words_selected|orderDict:" " as is_selected%}
+                        {% for index, selected in is_selected.items %}
+                            {% if selected == "1" %}
+                                <script>
+                                    document.getElementById("{{row.session_index}}.{{index}}").checked = true;
+                                </script>
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                </div>
+            </td>
+            <td id="{{row.session_index}}.keywords">{{row.keywords}}</td>
+        </tr>
+        {% endfor %}
+        </thead>
+    </table>
+</div>
+
+<div class="mx-5">
+<!-- 페이지 선택 버튼을 만든다 -->
+<nav aria-label="Page navigation example">
+    <ul class="pagination">
+        {% for page in page_list %}
+            {% if current_page == page %}
+                <li class="page-item active"><a class="page-link" style="text-decoration:none" href=""
+                                                onclick="location.href=base_url+{{page}}+'?data='+{{data_per_page}};return false;">{{page}}</a></li>
+            {% else %}
+                <li class="page-item"><a class="page-link" style="text-decoration:none" href=""
+                                         onclick="location.href=base_url+{{page}}+'?data='+{{data_per_page}};return false;">{{page}}</a></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+</div>
+
+<div class="m-5">
+<!-- 데이터베이스 데이터를 csv 파일로 다운로드-->
+    <a class="btn btn-primary btn-lg" style="text-decoration:none" href="{% url 'v1_export_users_csv' session_id %}">Download</a>
+</div>
+
+</body>
+</html>
